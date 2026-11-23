@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetListener — Browser Network Intelligence & Traffic Inspector</title>
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="brand">
+          <div class="radar-dot active" id="statusPulse" title="Monitoring Active"></div>
+          <div class="brand-info">
+            <span class="brand-name">NetListener</span>
+            <span class="brand-tagline">Network Traffic Intelligence</span>
+          </div>
+        </div>
+
+        <div class="scope-pill" id="dashboardScopePill" title="Scope: Local Subnet (192.168.x.x, 10.x.x.x, 172.16-31.x.x, localhost)">
+          <span class="scope-icon">⚡</span>
+          <span class="scope-text" id="dashboardScopeText">Scope: <strong>Subnet (192.168.x.x)</strong></span>
+        </div>
+
+        <nav class="view-nav">
+          <button class="nav-tab active" data-view="traffic">Traffic Inspector</button>
+          <button class="nav-tab" data-view="intelligence">Endpoint Intelligence</button>
+          <button class="nav-tab" data-view="security-guide">Security & Architecture</button>
+        </nav>
+      </div>
+
+      <div class="topbar-right">
+        <button id="dashboardSendLogBtn" class="btn btn-emerald" title="Send all captured traffic as a structured report to Firebase">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          <span id="dashSendLogText">Send log</span>
+        </button>
+
+        <button id="toggleMonitoringBtn" class="btn btn-secondary active">
+          <span class="status-indicator"></span>
+          <span id="toggleMonitoringText">Monitoring: Active</span>
+        </button>
+
+        <button id="clearHistoryBtn" class="btn btn-outline" title="Clear All Captured Requests">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          Clear
+        </button>
+
+        <div class="dropdown">
+          <button id="exportDropdownBtn" class="btn btn-primary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export
+          </button>
+          <div class="dropdown-menu hidden" id="exportMenu">
+            <button id="exportJsonBtn" class="dropdown-item">Export Sanitized JSON</button>
+            <button id="exportCsvBtn" class="dropdown-item">Export Audit CSV</button>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Sub-Header / Metrics KPI strip -->
+    <div class="kpi-strip">
+      <div class="kpi-item">
+        <span class="kpi-label">TOTAL REQUESTS</span>
+        <span class="kpi-value" id="kpiTotal">0</span>
+      </div>
+      <div class="kpi-item">
+        <span class="kpi-label">API CALLS (XHR/FETCH)</span>
+        <span class="kpi-value text-blue" id="kpiApi">0</span>
+      </div>
+      <div class="kpi-item">
+        <span class="kpi-label">UNIQUE ENDPOINTS</span>
+        <span class="kpi-value text-cyan" id="kpiEndpoints">0</span>
+      </div>
+      <div class="kpi-item">
+        <span class="kpi-label">FAILED / ERRORS</span>
+        <span class="kpi-value text-red" id="kpiErrors">0</span>
+      </div>
+      <div class="kpi-item">
+        <span class="kpi-label">FAILURE RATE</span>
+        <span class="kpi-value" id="kpiRate">0%</span>
+      </div>
+      <div class="kpi-item status-box">
+        <span class="kpi-label">SANITIZATION</span>
+        <span class="badge-safe">Active &bull; Zero Leakage</span>
+      </div>
+    </div>
+
+    <!-- MAIN VIEW 1: Traffic Inspector -->
+    <main class="view-panel active" id="trafficView">
+      <!-- Controls Toolbar -->
+      <div class="toolbar">
+        <div class="search-group">
+          <svg class="search-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="trafficSearchInput" placeholder="Search path, query, method, status code..." spellcheck="false">
+          <button id="clearTrafficSearchBtn" class="icon-clear hidden">&times;</button>
+        </div>
+
+        <div class="filter-controls">
+          <div class="select-group">
+            <label>Method:</label>
+            <select id="filterMethod">
+              <option value="ALL">ALL</option>
+              <option value="GET">GET</option>
+              <option value="POST">POST</option>
+              <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
+              <option value="OPTIONS">OPTIONS</option>
+            </select>
+          </div>
+
+          <div class="select-group">
+            <label>Status:</label>
+            <select id="filterStatus">
+              <option value="ALL">ALL</option>
+              <option value="2xx">2xx Success</option>
+              <option value="3xx">3xx Redirect</option>
+              <option value="4xx">4xx Client Err</option>
+              <option value="5xx">5xx Server Err</option>
+              <option value="failed">Failed / Network Err</option>
+            </select>
+          </div>
+
+          <div class="select-group">
+            <label>Type:</label>
+            <select id="filterType">
+              <option value="ALL">ALL Types</option>
+              <option value="fetch/xhr">Fetch / XHR</option>
+              <option value="script">Scripts (JS)</option>
+              <option value="stylesheet">Stylesheets (CSS)</option>
+              <option value="image">Images</option>
+              <option value="document">Documents</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="select-group">
+            <label>Origin:</label>
+            <select id="filterOrigin">
+              <option value="ALL">All Local Origins</option>
+            </select>
+          </div>
+
+          <div class="checkbox-group">
+            <label>
+              <input type="checkbox" id="autoScrollToggle" checked>
+              <span>Auto-scroll to latest</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split Layout: Table on Left/Top, Inspector on Right/Bottom -->
+      <div class="split-pane">
+        <!-- Request Grid -->
+        <div class="grid-container">
+          <table class="traffic-table" id="trafficTable">
+            <thead>
+              <tr>
+                <th style="width: 72px;">Method</th>
+                <th style="width: 76px;">Status</th>
+                <th>Endpoint / Pathname</th>
+                <th style="width: 140px;">Origin</th>
+                <th style="width: 90px;">Type</th>
+                <th style="width: 80px;">Duration</th>
+                <th style="width: 85px;">Time</th>
+              </tr>
+            </thead>
+            <tbody id="trafficTableBody">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+
+          <div class="empty-table-state" id="emptyTrafficState">
+            <div class="empty-icon">⤿</div>
+            <div class="empty-headline">No Traffic Captured Yet</div>
+            <p>NetListener is actively monitoring <code>localhost</code> and <code>127.0.0.1</code>.</p>
+            <p class="empty-subtext">Send requests from your local web applications or use the built-in test suite to generate traffic.</p>
+          </div>
+        </div>
+
+        <!-- Request Inspector Panel -->
+        <div class="inspector-panel" id="inspectorPanel">
+          <div class="inspector-empty" id="inspectorEmptyState">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <p>Select any request from the list to inspect headers, parameters, route patterns, and security audit details.</p>
+          </div>
+
+          <div class="inspector-content hidden" id="inspectorActiveContent">
+            <!-- Inspector Header -->
+            <div class="inspector-head">
+              <div class="head-left">
+                <span class="method-badge" id="inspMethod">GET</span>
+                <span class="status-badge" id="inspStatus">200 OK</span>
+                <span class="duration-badge" id="inspDuration">15 ms</span>
+              </div>
+              <div class="head-right">
+                <button class="btn btn-xs" id="copyUrlBtn" title="Copy Sanitized URL">Copy URL</button>
+                <button class="btn btn-xs" id="copyCurlBtn" title="Copy as cURL command">Copy cURL</button>
+              </div>
+            </div>
+
+            <!-- Full Sanitized URL Bar -->
+            <div class="inspector-url-bar">
+              <span class="url-label">URL:</span>
+              <code id="inspUrl"></code>
+            </div>
+
+            <!-- Inspector Tab Nav -->
+            <div class="inspector-nav">
+              <button class="insp-tab active" data-tab="overview">Overview</button>
+              <button class="insp-tab" data-tab="headers">Headers</button>
+              <button class="insp-tab" data-tab="params">Parameters</button>
+              <button class="insp-tab" data-tab="security">Security & Privacy Audit</button>
+              <button class="insp-tab" data-tab="devtools">DevTools & Bodies</button>
+            </div>
+
+            <!-- Tab 1: Overview -->
+            <div class="tab-pane active" id="paneOverview">
+              <table class="detail-table">
+                <tbody>
+                  <tr><th>Request ID</th><td id="detailReqId"></td></tr>
+                  <tr><th>Abstracted Route</th><td id="detailRoute"></td></tr>
+                  <tr><th>Resource Type</th><td id="detailType"></td></tr>
+                  <tr><th>Lifecycle Status</th><td id="detailLifecycle"></td></tr>
+                  <tr><th>Duration</th><td id="detailDuration"></td></tr>
+                  <tr><th>Initiator</th><td id="detailInitiator"></td></tr>
+                  <tr><th>From Cache</th><td id="detailCache"></td></tr>
+                  <tr><th>Timestamp</th><td id="detailTimestamp"></td></tr>
+                  <tr id="rowError" class="hidden"><th>Error Details</th><td id="detailError" class="text-red"></td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Tab 2: Headers -->
+            <div class="tab-pane" id="paneHeaders">
+              <div class="headers-section">
+                <div class="section-title">REQUEST HEADERS <span class="badge-count" id="reqHeaderCount">0</span></div>
+                <div id="reqHeadersList" class="headers-list"></div>
+              </div>
+              <div class="headers-section" style="margin-top: 14px;">
+                <div class="section-title">RESPONSE HEADERS <span class="badge-count" id="resHeaderCount">0</span></div>
+                <div id="resHeadersList" class="headers-list"></div>
+              </div>
+            </div>
+
+            <!-- Tab 3: Parameters -->
+            <div class="tab-pane" id="paneParams">
+              <div class="section-title">QUERY PARAMETERS</div>
+              <div id="paramsList" class="params-container"></div>
+            </div>
+
+            <!-- Tab 4: Security Audit -->
+            <div class="tab-pane" id="paneSecurity">
+              <div class="security-card">
+                <div class="sec-card-title">🛡️ Redaction & Privacy Safeguards</div>
+                <p>NetListener automatically redacts all authentication tokens, cookies, passwords, and sensitive keys before storing or displaying data.</p>
+                <div id="redactionSummary" class="redaction-list"></div>
+              </div>
+
+              <div class="security-card" style="margin-top: 10px;">
+                <div class="sec-card-title">🔍 Observed Security Headers</div>
+                <div id="securityHeadersAudit"></div>
+              </div>
+
+              <div class="security-card" style="margin-top: 10px;">
+                <div class="sec-card-title">📚 Educational Security Context</div>
+                <div id="educationalContext"></div>
+              </div>
+            </div>
+
+            <!-- Tab 5: DevTools & Bodies -->
+            <div class="tab-pane" id="paneDevtools">
+              <div class="security-card">
+                <div class="sec-card-title">ℹ️ Manifest V3 Request/Response Body Capabilities</div>
+                <p>In Chrome Manifest V3, passive <code>chrome.webRequest</code> intentionally does not expose response bodies to protect user memory and process isolation.</p>
+                <p style="margin-top: 6px;">For deep body inspection during security analysis, open the <strong>NetListener DevTools Panel</strong> directly inside Chrome Developer Tools (<code>F12</code> &rarr; <strong>NetListener</strong> tab) where the Chrome DevTools Protocol / HAR engine has legitimate full response body access!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- MAIN VIEW 2: Endpoint Intelligence -->
+    <main class="view-panel" id="intelligenceView">
+      <div class="intel-container">
+        <div class="intel-header">
+          <div>
+            <h2>Endpoint Intelligence & API Architecture Map</h2>
+            <p class="intel-subtitle">Automatic grouping of endpoints, route abstraction, method distributions, and error analysis.</p>
+          </div>
+        </div>
+
+        <div class="intel-grid">
+          <!-- Left: Grouped Endpoints Table -->
+          <div class="intel-card intel-endpoints-box">
+            <div class="card-header">
+              <span class="card-title">Grouped Endpoints & Route Patterns</span>
+              <span class="badge-count" id="intelGroupedCount">0</span>
+            </div>
+            <div class="table-scroll">
+              <table class="intel-table" id="intelTable">
+                <thead>
+                  <tr>
+                    <th>Route Pattern</th>
+                    <th>Origin</th>
+                    <th>Methods</th>
+                    <th>Calls</th>
+                    <th>Status Codes</th>
+                    <th>Avg Duration</th>
+                    <th>Failures</th>
+                  </tr>
+                </thead>
+                <tbody id="intelTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Right: Summary Insights -->
+          <div class="intel-sidebar">
+            <div class="intel-card">
+              <div class="card-title">HTTP Method Distribution</div>
+              <div id="methodDistributionBars" class="dist-container"></div>
+            </div>
+
+            <div class="intel-card" style="margin-top: 14px;">
+              <div class="card-title">Interesting API Routes Detected</div>
+              <div id="interestingApiList" class="intel-list"></div>
+            </div>
+
+            <div class="intel-card" style="margin-top: 14px;">
+              <div class="card-title">Failed Endpoints Log</div>
+              <div id="failedEndpointsList" class="intel-list"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- MAIN VIEW 3: Security & Architecture Guide -->
+    <main class="view-panel" id="securityGuideView">
+      <div class="guide-container">
+        <h2>NetListener Security Research & Architecture Guide</h2>
+        <p class="guide-subtitle">A cybersecurity learner's guide to how web applications communicate with backend systems.</p>
+
+        <div class="guide-grid">
+          <div class="guide-card">
+            <h3>1. Endpoint Discovery & Parameter Abstraction</h3>
+            <p>Web applications communicate via HTTP endpoints. NetListener discovers and groups these endpoints using parameter abstraction:</p>
+            <ul>
+              <li><strong>Numeric IDs:</strong> <code>/api/users/42</code> &rarr; <code>/api/users/:id</code></li>
+              <li><strong>UUIDs:</strong> <code>/v1/sessions/550e8400-e29b-41d4...</code> &rarr; <code>/v1/sessions/:uuid</code></li>
+              <li><strong>Object Hashes:</strong> 24/32 hex strings mapped to <code>/:hash</code></li>
+            </ul>
+            <p>This allows security researchers and developers to map the full attack surface and API schema of an application regardless of dynamic resource identifiers.</p>
+          </div>
+
+          <div class="guide-card">
+            <h3>2. Privacy-First Redaction Rules</h3>
+            <p>NetListener is designed strictly as an ethical learning and debugging tool. The following safeguards are enforced at the network capture layer:</p>
+            <ul>
+              <li><strong>Default Scope:</strong> Restricted to <code>localhost</code> and <code>127.0.0.1</code>. Unrelated websites are never monitored.</li>
+              <li><strong>Header Sanitization:</strong> <code>Authorization</code>, <code>Cookie</code>, <code>X-Api-Key</code>, and <code>Set-Cookie</code> are redacted before storage.</li>
+              <li><strong>Query Sanitization:</strong> Keys like <code>token</code>, <code>apiKey</code>, <code>password</code>, <code>session</code>, and <code>secret</code> have their values replaced with <code>[REDACTED]</code>.</li>
+              <li><strong>Local Storage Only:</strong> Captured traffic stays in your browser's local sandbox; zero external network requests are made.</li>
+            </ul>
+          </div>
+
+          <div class="guide-card">
+            <h3>3. Chrome Manifest V3 Architecture</h3>
+            <p>In Manifest V3, Chrome introduced a modern security model for extensions:</p>
+            <ul>
+              <li><strong>Passive Observation:</strong> Passive <code>chrome.webRequest</code> listeners observe requests without intercepting or slowing down page threads.</li>
+              <li><strong>Ephemeral Service Workers:</strong> Background scripts terminate when inactive; NetListener synchronizes captured requests into <code>chrome.storage.local</code> to preserve history across suspensions.</li>
+              <li><strong>DevTools Integration:</strong> For deep HTTP response body inspection, DevTools extensions leverage <code>chrome.devtools.network</code> which has native access to the HAR response stream.</li>
+            </ul>
+          </div>
+
+          <div class="guide-card">
+            <h3>4. Essential Security Headers to Inspect</h3>
+            <p>When analyzing backend communications, always inspect the following response headers:</p>
+            <ul>
+              <li><code>Access-Control-Allow-Origin</code>: Governs Cross-Origin Resource Sharing (CORS). Wildcards (<code>*</code>) on authenticated endpoints can lead to CORS vulnerabilities.</li>
+              <li><code>Content-Security-Policy</code>: Restricts where scripts, images, and network calls can originate.</li>
+              <li><code>X-Content-Type-Options: nosniff</code>: Prevents MIME-sniffing attacks.</li>
+              <li><code>Strict-Transport-Security (HSTS)</code>: Enforces encrypted HTTPS communication.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetListener</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="brand">
+        <div class="radar-dot active" id="statusPulse" title="Monitoring Active"></div>
+        <div class="brand-text">
+          <span class="brand-title">NetListener</span>
+          <span class="brand-scope" id="scopeIndicator" title="Scope: Local Subnet (192.168.x.x, 10.x.x.x, localhost)">Subnet (192.168.x.x)</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <!-- Send Log Button -->
+        <button id="sendLogBtn" class="action-btn send-log-btn" title="Send all captured network traffic as a structured report to Firebase">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+          <span id="sendLogBtnText">Send log</span>
+        </button>
+
+        <button id="firebaseSettingsBtn" class="action-btn icon-btn" title="Configure Firebase Project & Destination">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+
+        <button id="toggleMonitoringBtn" class="action-btn toggle-btn" title="Toggle Traffic Monitoring">
+          <span class="toggle-icon">●</span>
+          <span id="toggleText">Active</span>
+        </button>
+
+        <button id="openDashboardBtn" class="action-btn icon-btn" title="Open Full Screen Dashboard">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Metrics Bar -->
+    <div class="metrics-bar">
+      <div class="metric-item">
+        <span class="metric-val" id="metricTotal">0</span>
+        <span class="metric-lbl">Total</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-val text-blue" id="metricApi">0</span>
+        <span class="metric-lbl">API Calls</span>
+      </div>
+      <div class="metric-item">
+        <span class="metric-val text-red" id="metricErrors">0</span>
+        <span class="metric-lbl">Errors</span>
+      </div>
+      <div class="metric-item actions-item">
+        <button id="clearHistoryBtn" class="mini-btn text-muted" title="Clear Captured Traffic">Clear</button>
+        <button id="exportBtn" class="mini-btn text-blue" title="Export Sanitized JSON">Export</button>
+      </div>
+    </div>
+
+    <!-- Status Toast Notification -->
+    <div id="toastNotification" class="toast-notification hidden">
+      <span id="toastMessage"></span>
+      <button id="toastCloseBtn" class="toast-close">&times;</button>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <div class="search-box">
+        <svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="searchInput" placeholder="Filter endpoint, route, method..." spellcheck="false" autocomplete="off">
+        <button id="clearSearchBtn" class="clear-search-btn hidden">&times;</button>
+      </div>
+      <div class="method-pills" id="methodPills">
+        <button class="pill active" data-method="ALL">ALL</button>
+        <button class="pill" data-method="GET">GET</button>
+        <button class="pill" data-method="POST">POST</button>
+        <button class="pill" data-method="PUT">PUT</button>
+        <button class="pill" data-method="DELETE">DEL</button>
+      </div>
+    </div>
+
+    <!-- Request Stream List -->
+    <main class="request-stream" id="requestStream">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">⤿</div>
+        <div class="empty-title">Waiting for local traffic</div>
+        <div class="empty-desc">Send HTTP requests to <code>localhost</code> or <code>127.0.0.1</code> to inspect them live.</div>
+      </div>
+      <div class="request-items" id="requestItems"></div>
+    </main>
+
+    <!-- Slide-in Inspector Drawer -->
+    <div class="inspector-drawer hidden" id="inspectorDrawer">
+      <div class="drawer-header">
+        <div class="drawer-title-group">
+          <span class="method-badge" id="drawerMethod">GET</span>
+          <span class="drawer-status" id="drawerStatus">200 OK</span>
+          <span class="drawer-duration" id="drawerDuration">12ms</span>
+        </div>
+        <button id="closeDrawerBtn" class="drawer-close">&times;</button>
+      </div>
+      <div class="drawer-url" id="drawerUrl"></div>
+      
+      <div class="drawer-tabs">
+        <button class="drawer-tab active" data-tab="headers">Headers</button>
+        <button class="drawer-tab" data-tab="params">Params</button>
+        <button class="drawer-tab" data-tab="info">Info</button>
+      </div>
+
+      <div class="drawer-content" id="drawerContent">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="drawer-footer">
+        <button id="drawerOpenDashboardBtn" class="drawer-full-btn">Open in Dashboard Inspector &rarr;</button>
+      </div>
+    </div>
+
+    <!-- Firebase Settings Modal -->
+    <div class="modal-overlay hidden" id="firebaseModal">
+      <div class="modal-card">
+        <div class="modal-head">
+          <h3>Firebase Destination Settings</h3>
+          <button id="closeFirebaseModalBtn" class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-note">NetListener will serialize all captured traffic into a structured, sanitized report and send it to your Firebase instance.</p>
+          
+          <div class="form-group">
+            <label>Firebase Project ID:</label>
+            <input type="text" id="fbProjectId" placeholder="e.g. alt-mvgr" spellcheck="false">
+          </div>
+
+          <div class="form-group">
+            <label>Collection / Path:</label>
+            <input type="text" id="fbCollection" placeholder="e.g. network_reports" spellcheck="false">
+          </div>
+
+          <div class="form-group">
+            <label>Web API Key (Optional for Open / Auth Rules):</label>
+            <input type="text" id="fbApiKey" placeholder="AIzaSy..." spellcheck="false">
+          </div>
+
+          <div class="form-group">
+            <label>Destination Service Type:</label>
+            <select id="fbEndpointType">
+              <option value="firestore">Cloud Firestore REST API</option>
+              <option value="rtdb">Firebase Realtime Database</option>
+              <option value="custom">Custom Webhook / Cloud Function URL</option>
+            </select>
+          </div>
+
+          <div class="form-group hidden" id="customUrlGroup">
+            <label>Custom Webhook URL:</label>
+            <input type="text" id="fbCustomUrl" placeholder="https://..." spellcheck="false">
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button id="saveFirebaseSettingsBtn" class="btn-primary-sm">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

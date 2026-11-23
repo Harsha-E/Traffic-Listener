@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetListener DevTools Panel</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div class="panel-layout">
+    <!-- Header -->
+    <header class="panel-header">
+      <div class="brand-group">
+        <span class="brand-title">NetListener</span>
+        <span class="badge-scope">DevTools Mode</span>
+      </div>
+      <div class="header-controls">
+        <button id="clearDevtoolsBtn" class="btn-tool">Clear</button>
+        <button id="exportDevtoolsBtn" class="btn-tool">Export JSON</button>
+      </div>
+    </header>
+
+    <!-- Main split -->
+    <div class="panel-split">
+      <div class="table-pane">
+        <div class="filter-bar">
+          <input type="text" id="devSearch" placeholder="Filter inspected tab requests..." spellcheck="false">
+        </div>
+        <div class="table-scroll">
+          <table class="dev-table">
+            <thead>
+              <tr>
+                <th style="width: 60px;">Method</th>
+                <th style="width: 55px;">Status</th>
+                <th>Path</th>
+                <th style="width: 65px;">Time</th>
+              </tr>
+            </thead>
+            <tbody id="devTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="detail-pane" id="devDetailPane">
+        <div class="detail-empty" id="devDetailEmpty">Select a request to inspect headers and response body.</div>
+        <div class="detail-body hidden" id="devDetailBody">
+          <div class="dev-meta">
+            <span id="devMethodBadge" class="method-badge">GET</span>
+            <span id="devStatusBadge" class="status-badge">200</span>
+            <span id="devUrlDisplay" class="url-text"></span>
+          </div>
+          <div class="dev-tabs">
+            <button class="d-tab active" data-tab="headers">Headers</button>
+            <button class="d-tab" data-tab="response">Response Body</button>
+          </div>
+          <div class="d-content" id="dContentHeaders"></div>
+          <div class="d-content hidden" id="dContentResponse">
+            <pre id="devResponseBody" class="code-view"></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

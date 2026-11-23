@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetListener Test Application & Verification Suite</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="workbench">
+    <header class="wb-header">
+      <div class="header-content">
+        <h1>NetListener Traffic Generator & Verification Suite</h1>
+        <p class="subtitle">Generates various HTTP methods, status codes, resource types, burst traffic, and sensitive credentials for testing the NetListener extension.</p>
+      </div>
+      <div class="server-badge">
+        <span class="dot"></span>
+        <span>Local Test Server: <code>127.0.0.1:3000</code></span>
+      </div>
+    </header>
+
+    <div class="test-controls-card">
+      <div class="card-head">
+        <h2>Automated Verification</h2>
+        <button id="runAllBtn" class="btn btn-emerald">🚀 Run All Automated Tests</button>
+      </div>
+      <p class="desc">Executes all tests in sequence (GET, POST, PUT, PATCH, DELETE, Errors, Redaction, Multiple Resource Types, and Burst Traffic).</p>
+      <div id="testProgress" class="progress-bar hidden"><div class="fill" id="progressFill"></div></div>
+    </div>
+
+    <div class="test-grid">
+      <!-- Section 1: Standard REST Operations -->
+      <div class="test-card">
+        <h3>1. HTTP Methods & REST Patterns</h3>
+        <p>Tests detection of standard HTTP verbs and route abstraction (<code>/api/v1/users/:id</code>).</p>
+        <div class="btn-group">
+          <button id="btnGet" class="btn btn-get">GET /api/v1/users</button>
+          <button id="btnGetId" class="btn btn-get">GET /api/v1/users/42</button>
+          <button id="btnPost" class="btn btn-post">POST /api/v1/users</button>
+          <button id="btnPut" class="btn btn-put">PUT /api/v1/users/42</button>
+          <button id="btnPatch" class="btn btn-patch">PATCH /api/v1/users/42</button>
+          <button id="btnDelete" class="btn btn-del">DELETE /api/v1/users/42</button>
+          <button id="btnOptions" class="btn btn-options">OPTIONS /api/v1/users</button>
+          <button id="btnSubnet" class="btn btn-emerald">Local Subnet Simulation</button>
+        </div>
+      </div>
+
+      <!-- Section 2: Security & Redaction -->
+      <div class="test-card">
+        <h3>2. Sensitive Data & Redaction Safeguards</h3>
+        <p>Verifies that tokens, secrets, cookies, and passwords are never captured or leaked.</p>
+        <div class="btn-group">
+          <button id="btnSensitiveQuery" class="btn btn-blue">Query Redaction (apiKey, token, pass)</button>
+          <button id="btnAuthHeader" class="btn btn-blue">Auth Header Redaction (Bearer, X-Api-Key)</button>
+          <button id="btnCookieTest" class="btn btn-blue">Cookie Redaction (Set-Cookie, Cookie)</button>
+        </div>
+      </div>
+
+      <!-- Section 3: Error Handling -->
+      <div class="test-card">
+        <h3>3. Status Codes & Error Lifecycles</h3>
+        <p>Verifies detection of 4xx client errors, 5xx server crashes, and network failures.</p>
+        <div class="btn-group">
+          <button id="btn404" class="btn btn-orange">404 Not Found</button>
+          <button id="btn500" class="btn btn-red">500 Server Error</button>
+          <button id="btnNetworkErr" class="btn btn-red">Network Connection Failure</button>
+          <button id="btnSlow" class="btn btn-purple">Slow Request (250ms duration)</button>
+        </div>
+      </div>
+
+      <!-- Section 4: Resource Types & High Throughput -->
+      <div class="test-card">
+        <h3>4. Resource Types & Burst Traffic</h3>
+        <p>Distinguishes fetch/XHR, scripts, styles, images, and tests high-frequency buffering.</p>
+        <div class="btn-group">
+          <button id="btnMultiResource" class="btn btn-cyan">Trigger Script, CSS & Image</button>
+          <button id="btnBurst" class="btn btn-amber">Burst Traffic (15 rapid calls)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Output Log -->
+    <div class="log-card">
+      <div class="log-head">
+        <h3>Local Test Console Output</h3>
+        <button id="clearLogBtn" class="btn btn-xs">Clear Log</button>
+      </div>
+      <div class="log-console" id="logConsole">
+        <div class="log-line text-muted">[Ready] Test workbench initialized. Click any test above to send requests.</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="dynamicResourceContainer" style="display:none;"></div>
+  <script src="app.js"></script>
+</body>
+</html>
